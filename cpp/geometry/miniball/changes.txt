@@ -1,0 +1,12 @@
+Changes
+-------
+
+Release		Change
+
+1.3		in push-operation of Basis, removed division by
+		current_sqr_r. The latter can be zero and may 
+		crash non IEEE-compliant floating-point arithmetic
+		(reported by Qing Song)  
+
+1.4		GNU Public License terms and release number added
+

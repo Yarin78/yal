@@ -1,0 +1,48 @@
+﻿Mappings from G to block-cutpoint graph:
+0 [block]      -> 2
+1 [block]      -> 2
+2 [block]      -> 7
+3 [cut-vertex] -> 4
+4 [cut-vertex] -> 6
+5 [block]      -> 7
+6 [block]      -> 0
+7 [block]      -> 3
+8 [cut-vertex] -> 1
+9 [block]      -> 3
+10 [block]      -> 3
+
+Connections in block-cutpoint graph:
+
+0 [block]      1
+1 [cut-vertex] 0 2
+2 [block]      1
+3 [block]      4
+4 [cut-vertex] 3 5
+5 [block]      6 4
+6 [cut-vertex] 5 7
+7 [block]      6
+
+Mappings from block-cutpoint graph to G:
+0B: 8 6
+1C: 8
+2B: 0 8 1
+3B: 3 10 7 9
+4C: 3
+5B: 4 3
+6C: 4
+7B: 2 4 5
+
+Mappings from edges in G to blocks in H:
+Edge 0-1 lies in block 2
+Edge 1-8 lies in block 2
+Edge 0-8 lies in block 2
+Edge 8-6 lies in block 0
+Edge 9-3 lies in block 3
+Edge 3-10 lies in block 3
+Edge 10-7 lies in block 3
+Edge 3-7 lies in block 3
+Edge 9-7 lies in block 3
+Edge 3-4 lies in block 5
+Edge 4-5 lies in block 7
+Edge 5-2 lies in block 7
+Edge 2-4 lies in block 7

@@ -1,0 +1,15 @@
+.idea/
+out/
+target/
+*.class
+*.iml
+*.exe
+*.EXE
+*.stackdump
+*.zip
+*.bak
+*.resharperoptions
+*.csproj.user
+_ReSharper*/
+.DS_Store
+*.suo

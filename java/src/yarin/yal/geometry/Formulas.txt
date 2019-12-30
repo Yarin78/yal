@@ -1,0 +1,7 @@
+Formulas:
+dot(a,b) = |a||b|*cos(theta)  (direction insensitive)
+
+
+Rotation matrix:
+[ cos(theta) -sin(theta) ]
+[ sin(theta)  cos(theta) ]
