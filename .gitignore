@@ -13,3 +13,7 @@ target/
 _ReSharper*/
 .DS_Store
 *.suo
+*.pyc
+__pycache__/
+obj/
+.venv/
