@@ -1,5 +1,9 @@
 package yarin.yal.graph;
 
+import yarin.yal.Kattio;
+
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -88,5 +92,24 @@ public class BipartiteMatching {
             }
         }
         return result;
+    }
+
+    public static void main(String[] args) throws FileNotFoundException {
+        FileInputStream fis = new FileInputStream("/Users/yarin/src/competitions/yal/python/tests/matching.in");
+        Kattio io = new Kattio(fis, System.out);
+        int numCases = io.getInt();
+        while (numCases-- > 0) {
+            int u = io.getInt(), v = io.getInt(), numEdges = io.getInt();
+            ArrayList<Edge> edges = new ArrayList<>();
+            for (int i = 0; i < numEdges; i++) {
+                int x = io.getInt(), y = io.getInt();
+                edges.add(new Edge(x, y));
+            }
+            List<Edge> maximumMatching = BipartiteMatching.findMaximumMatching(edges);
+            // io.println(u + " " + v + " " + maximumMatching.size());
+            io.println(maximumMatching.size());
+            io.flush();
+        }
+        io.close();
     }
 }

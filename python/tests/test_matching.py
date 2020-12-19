@@ -1,6 +1,19 @@
 import sys
 import random
+from collections import defaultdict
 from yal import matching
+
+def test_trivial():
+    g = {
+        'FOO' : ['bar'],
+        'X': ['a', 'b'],
+        'Y': ['b', 'c'],
+        'Z': ['c'],
+        'BLAH': []
+    }
+    m = matching.bipartite_matching(g)
+    # Unique solution
+    assert(m == {'Z': 'c', 'X': 'a', 'FOO': 'bar', 'Y': 'b'})
 
 def test_input_file():
     with open("tests/matching.in", "r") as f:
@@ -10,12 +23,13 @@ def test_input_file():
                 n, m, num_edges = map(int, f.readline().split(' '))
                 expected = int(fans.readline())
                 #print(n, m, num_edges)
-                b = matching.BipartiteMatching(n, m)
+                edges = defaultdict(lambda: list())
                 for _ in range(num_edges):
                     x, y = map(int, f.readline().split(' '))
-                    b.add(x, y)
-                ans = sum(m >= 0 for m in b.find_maximum_matching())
-                assert ans == expected
+                    edges[x].append(y)
+
+                m = matching.bipartite_matching(edges)
+                assert len(m) == expected
 
 
 
