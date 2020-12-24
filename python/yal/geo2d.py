@@ -1,4 +1,5 @@
 import math
+from typing import Tuple
 
 EPSILON = 1e-9
 
@@ -52,8 +53,27 @@ class Point:
     def rotate(self, theta):
         return Point(math.cos(theta) * self.x - math.sin(theta) * self.y, math.sin(theta) * self.x + math.cos(theta) * self.y)
 
+    def rotate_deg(self, degrees):
+        return self.rotate(degrees / 180 * math.pi)
+
+    def intify(self):
+        return Point(int(round(self.x)), int(round(self.y)))
+
     def norm_sqr(self):
         return self.x*self.x + self.y*self.y
+
+    @staticmethod
+    def range(min, max):
+        """Returns an iterator of all Points with coordinates <= min and < max."""
+        for x in range(min.x, max.x):
+            for y in range(min.y, max.y):
+                yield Point(x, y)
+
+    @staticmethod
+    def bounding_box(points):
+        minp = Point(min(p.x for p in points), min(p.y for p in points))
+        maxp = Point(max(p.x for p in points), max(p.y for p in points))
+        return minp, maxp
 
 
 class Line:

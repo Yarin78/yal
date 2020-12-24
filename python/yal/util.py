@@ -1,5 +1,6 @@
 import re
 import itertools
+import string
 
 _integer_pattern = re.compile(r"-?[0-9]+")
 _token_pattern = re.compile(r"[A-Za-z0-9]+")
@@ -42,3 +43,63 @@ def chunk(s, chunk_size):
         i += chunk_size
     return res
 
+def init_matrix(ysize, xsize, init=0):
+    return [[init] * xsize for _ in range(ysize)]
+
+def matrix_filter(m, condition):
+    res=[]
+    for row in range(len(m)):
+        for col in range(len(m[row])):
+            if condition(m[row][col]):
+                res.append((col, row))
+    return res
+
+def lower_letters(num=26):
+    return string.ascii_lowercase[:num]
+
+def upper_letters(num=26):
+    return string.ascii_uppercase[:num]
+
+def string_to_mask(s):
+    mask = 0
+    for c in s:
+        if c.islower():
+            mask |= 1 << (ord(c) - ord('a'))
+        if c.isupper():
+            mask |= 1 << (ord(c) - ord('A') + 26)
+    return mask
+
+def count_bits(i):
+    cnt = 0
+    while i:
+        cnt += i&1
+        i //= 2
+    return cnt
+
+
+def eval_expr(expr):
+    # This is an example from AoC 2020 day 18 that applies + before * on an integer expression
+
+    # Recursively replace the innermost ( ) expression with its evaluation
+    while '(' in expr:
+        expr = re.sub(r'\(([^\(^\)]+)\)', lambda m: eval_expr(m.groups(1)[0]), expr, count=1)
+
+    # + has higher precedence than *
+    while '+' in expr:
+        expr = re.sub(r'(([0-9]+)\s*\+\s*([0-9]+))', lambda m: str(int(m.groups()[1]) + int(m.groups()[2])), expr, count=1)
+    while '*' in expr:
+        expr = re.sub(r'(([0-9]+)\s*\*\s*([0-9]+))', lambda m: str(int(m.groups()[1]) * int(m.groups()[2])), expr, count=1)
+
+    # left-to right eval of + and *
+    # def _sub_eval(m):
+    #     t1 = int(m.groups()[1])
+    #     t2 = int(m.groups()[3])
+    #     if m.groups()[2] == '+':
+    #         return str(t1+t2)
+    #     if m.groups()[2] == '*':
+    #         return str(t1*t2)
+    #     assert False
+
+    # while '+' in expr or '*' in expr:
+    #     expr = re.sub(r'(([0-9]+)\s*(\+|\*)\s*([0-9]+))', _sub_eval, expr, count=1)
+    return expr
