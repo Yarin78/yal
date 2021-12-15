@@ -1,11 +1,12 @@
 from queue import Queue
 import heapq
 import functools
+from typing import Any, Dict
 from yal.geo2d import Point
 from yal.grid import DIRECTIONS, DIRECTIONS_INCL_DIAGONALS
 
 
-def bfs(graph, start, func=None):
+def bfs(graph, start, func=None) -> Dict[Any, int]:
     '''Performs a BFS search in a graph and returns the distans to all nodes visited.
     If func is set, calls func(node, dist) when each node is visited.
     graph: {node: [neighbors]}
@@ -201,7 +202,7 @@ def grid_graph(grid, is_node, get_edge=None, uni_distance=True, num_directions=4
                         nc = grid[np.y][np.x]
                         if is_node(np, nc):
                             e = get_edge(p, c, np, nc) if get_edge else True
-                            if e is not None:
+                            if e is not None and e is not False:
                                 if uni_distance:
                                     neighbors.append(np)
                                 else:

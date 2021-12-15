@@ -1,6 +1,7 @@
 import re
 import itertools
 import string
+from typing import List, Optional
 
 _integer_pattern = re.compile(r"-?[0-9]+")
 _token_pattern = re.compile(r"[A-Za-z0-9]+")
@@ -8,19 +9,23 @@ _token_pattern_with_dash = re.compile(r"[\-A-Za-z0-9]+")
 
 
 def get_ints(line):
+    '''Detects all integers in a line an returns a list of them. Non-integer tokens are ignored.'''
     return [int(m) for m in _integer_pattern.findall(line)]
 
 
 def tokenize(line):
+    '''Splits a line into tokens made up of alpha numerical characters'''
     return [s for s in _token_pattern.findall(line)]
 
 
 def is_int(s):
+    '''Determines if a string is an int.'''
     return s.isdigit() or (len(s) and s[0] == '-' and s[1:].isdigit())
 
 
 def intify(line):
-    '''If something looks like an int, it probably is'''
+    '''Converts a list of strings into a list of mixed int/strings depending on if a string can be parsed as an int.
+    If something looks like an int, it probably is.'''
     return [int(s) if is_int(s) else s for s in line]
 
 
@@ -44,9 +49,11 @@ def chunk(s, chunk_size):
     return res
 
 def init_matrix(ysize, xsize, init=0):
+    '''Initialized an empty matrix.'''
     return [[init] * xsize for _ in range(ysize)]
 
 def matrix_filter(m, condition):
+    '''Gets a list of tuples (col,row) for all elements in a matrix matching a condition.'''
     res=[]
     for row in range(len(m)):
         for col in range(len(m[row])):
@@ -55,12 +62,15 @@ def matrix_filter(m, condition):
     return res
 
 def lower_letters(num=26):
+    '''Returns a string of the first num lowercase letters'''
     return string.ascii_lowercase[:num]
 
 def upper_letters(num=26):
+    '''Returns a string of the first num uppercase letters'''
     return string.ascii_uppercase[:num]
 
 def string_to_mask(s):
+    '''Converts a string of letters a-z, A-Z into a corresponding bitmask (52 bits)'''
     mask = 0
     for c in s:
         if c.islower():
@@ -70,6 +80,7 @@ def string_to_mask(s):
     return mask
 
 def count_bits(i):
+    '''Count number of bits set in an int'''
     cnt = 0
     while i:
         cnt += i&1
@@ -103,3 +114,40 @@ def eval_expr(expr):
     # while '+' in expr or '*' in expr:
     #     expr = re.sub(r'(([0-9]+)\s*(\+|\*)\s*([0-9]+))', _sub_eval, expr, count=1)
     return expr
+
+
+def get_matrix(line_stream) -> Optional[List[List[int]]]:
+    '''Returns a matrix of ints by reading lines,
+    stopping at the next empty line and ignoring initial empty lines.
+    Returns None at end if input.'''
+    try:
+        s = next(line_stream)
+        while s == '':
+            s = next(line_stream)
+    except StopIteration:
+        return None
+
+    rows = []
+    while s:
+        rows.append(list(map(int, tokenize(s))))
+        try:
+            s = next(line_stream)
+        except StopIteration:
+            break
+    return rows
+
+def sign(x):
+    if x < 0:
+        return -1
+    if x > 0:
+        return 1
+    return 0
+
+def dict_min_value(dict):
+    '''Gets a tuple (value, key) from the dict with the min value'''
+    return min((v, k) for k, v in dict.items())
+
+def dict_max_value(dict):
+    '''Gets a tuple (value, key) from the dict with the max value'''
+    return max((v, k) for k, v in dict.items())
+
