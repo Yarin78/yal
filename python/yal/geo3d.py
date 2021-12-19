@@ -1,3 +1,6 @@
+from typing import List
+
+
 EPSILON = 1e-9
 
 
@@ -14,6 +17,9 @@ class Point:
 
     def __add__(self, other):
         return Point(self.x + other.x, self.y+other.y, self.z+other.z)
+
+    def __sub__(self, other):
+        return Point(self.x - other.x, self.y-other.y, self.z-other.z)
 
     def __abs__(self):
         return Point(abs(self.x), abs(self.y), abs(self.z))
@@ -49,3 +55,20 @@ class Point:
             for y in range(min.y, max.y):
                 for z in range(min.z, max.z):
                     yield Point(x, y, z)
+
+    def roll(self): return Point(self.x, self.z, -self.y)
+    def turn(self): return Point(-self.y, self.x, self.z)
+
+    def rotations(self) -> List["Point"]:
+        """Generates all 24 90-degree rotations of this point"""
+        rots = []
+        cur = self
+        for _ in range(2):
+            for _ in range(3):
+                rots.append(cur)
+                cur = cur.roll()
+                for _ in range(3):
+                    rots.append(cur)
+                    cur = cur.turn()
+            cur = cur.roll().turn().roll()
+        return rots

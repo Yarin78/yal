@@ -1,5 +1,5 @@
 import math
-from typing import Tuple
+from typing import List, Tuple
 
 EPSILON = 1e-9
 
@@ -50,10 +50,19 @@ class Point:
     def __repr__(self):
         return self.__str__()
 
-    def rotate(self, theta):
+    def rotations(self) -> List["Point"]:
+        """Generates all 4 90-degree rotations of this point"""
+        return [
+            self,
+            Point(-self.y, self.x),
+            Point(-self.x, -self.y),
+            Point(self.y, -self.x)
+        ]
+
+    def rotate(self, theta) -> "Point":
         return Point(math.cos(theta) * self.x - math.sin(theta) * self.y, math.sin(theta) * self.x + math.cos(theta) * self.y)
 
-    def rotate_deg(self, degrees):
+    def rotate_deg(self, degrees) -> "Point":
         return self.rotate(degrees / 180 * math.pi)
 
     def intify(self):

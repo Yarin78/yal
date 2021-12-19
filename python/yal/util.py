@@ -1,7 +1,7 @@
 import re
 import itertools
 import string
-from typing import List, Optional
+from typing import Any, List, Optional
 
 _integer_pattern = re.compile(r"-?[0-9]+")
 _token_pattern = re.compile(r"[A-Za-z0-9]+")
@@ -151,3 +151,9 @@ def dict_max_value(dict):
     '''Gets a tuple (value, key) from the dict with the max value'''
     return max((v, k) for k, v in dict.items())
 
+def transpose_matrix(matrix: List[List[Any]]) -> List[List[Any]]:
+    result = [[] for _ in range(len(matrix[0]))]
+    for row in matrix:
+        for col_ix, col in enumerate(row):
+            result[col_ix].append(col)
+    return result
