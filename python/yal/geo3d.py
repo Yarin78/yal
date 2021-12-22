@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 
 EPSILON = 1e-9
@@ -72,3 +72,45 @@ class Point:
                     cur = cur.turn()
             cur = cur.roll().turn().roll()
         return rots
+
+
+class Block:
+    """Represents a 3d block by its two opposite corners.
+    p1 coordinates are inclusive, p2 coordinates exclusive."""
+    p1: Point
+    p2: Point
+
+    def __init__(self, p1: Point, p2: Point):
+        assert p1.x < p2.x and p1.y < p2.y and p1.z < p2.z
+        self.p1 = p1
+        self.p2 = p2
+
+    def volume(self):
+        return (self.p2.x-self.p1.x) * (self.p2.y-self.p1.y) * (self.p2.z-self.p1.z)
+
+    def intersect(self, other: "Block") -> Optional["Block"]:
+        x1, x2 = (max(self.p1.x, other.p1.x), min(self.p2.x, other.p2.x))
+        y1, y2 = (max(self.p1.y, other.p1.y), min(self.p2.y, other.p2.y))
+        z1, z2 = (max(self.p1.z, other.p1.z), min(self.p2.z, other.p2.z))
+
+        return Block(Point(x1,y1,z1), Point(x2,y2,z2)) if x1 < x2 and y1 < y2 and z1 < z2 else None
+
+    def subtract(self, other: "Block") -> List["Block"]:
+        x1, x2 = (max(self.p1.x, other.p1.x), min(self.p2.x, other.p2.x))
+        y1, y2 = (max(self.p1.y, other.p1.y), min(self.p2.y, other.p2.y))
+        z1, z2 = (max(self.p1.z, other.p1.z), min(self.p2.z, other.p2.z))
+
+        if x2 <= x1 or y2 <= y1 or z2 <= z1:
+            # The other block does not intersect, so no subtraction happened
+            return [self]
+
+        splits = [
+            (self.p1, Point(x1, self.p2.y, self.p2.z)),
+            (Point(x2, self.p1.y, self.p1.z), self.p2),
+            (Point(x1, self.p1.y, self.p1.z), Point(x2, y1, self.p2.z)),
+            (Point(x1, y2, self.p1.z), Point(x2, self.p2.y, self.p2.z)),
+            (Point(x1, y1, self.p1.z), Point(x2, y2, z1)),
+            (Point(x1, y1, z2), Point(x2, y2, self.p2.z)),
+        ]
+
+        return [Block(b1, b2) for (b1, b2) in splits if b1.x<b2.x and b1.y<b2.y and b1.z<b2.z]
