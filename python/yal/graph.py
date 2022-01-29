@@ -1,9 +1,9 @@
 from queue import Queue
 import heapq
 import functools
-from typing import Any, Dict
+from typing import Any, Dict, List, Union
 from yal.geo2d import Point
-from yal.grid import DIRECTIONS, DIRECTIONS_INCL_DIAGONALS
+from yal.grid import DIRECTIONS, DIRECTIONS_INCL_DIAGONALS, Grid
 
 
 def bfs(graph, start, func=None) -> Dict[Any, int]:
@@ -129,6 +129,38 @@ def dijkstra(graph, start, func=None):
 
     return dist
 
+def dijkstra2(start, neighbors, hash_func=None, approx_func=None, done_func=None):
+    '''Performs a shortest-path in a graph and returns the distance to all nodes visited.
+    neighbors is a function that takes a state and return a list of tuples containing
+    neighboring nodes and the distance.
+    If the state is not hashable, set hash_func to something that maps the state to a unique hashable value
+    If approx_func is set, the search becomes an A* search. approx_func takes a state an returns
+    a minimum cost required to reach the target end state
+    If done_func is set, the search is aborted if it's evaluated to true and the returned value is instead
+    the dist (or None if the end is never reached)
+    '''
+    dist = {}
+    q = []
+
+    def add(node, d):
+        nonlocal dist, q
+        hashable_node = hash_func(node) if hash_func else node
+        if hashable_node not in dist or d < dist[hashable_node]:
+            dist[hashable_node] = d
+            approx_cost = d + approx_func(node) if approx_func else d
+            heapq.heappush(q, (approx_cost, d, node))
+
+    add(start, 0)
+    while len(q):
+        (_, cur_dist, cur) = heapq.heappop(q)
+        if done_func and done_func(cur):
+            return cur_dist
+        cur_hash = hash_func(cur) if hash_func else cur
+        if cur_dist == dist[cur_hash]:
+            for (x, d) in neighbors(cur):
+                add(x, cur_dist + d)
+
+    return None if done_func else dist
 
 def topological_sort(graph):
     '''Performs a topological sort on a graph. Each node in the graph contains
@@ -171,7 +203,7 @@ def topological_sort(graph):
     return result
 
 
-def grid_graph(grid, is_node, get_edge=None, uni_distance=True, num_directions=4):
+def grid_graph(grid: Union[Grid, List[str]], is_node, get_edge=None, uni_distance=True, num_directions=4):
     '''Converts a grid (line of strings) into a graph given two functions.
     The is_node function takes a Point and character and returns True if
     the position is a node.
@@ -185,6 +217,9 @@ def grid_graph(grid, is_node, get_edge=None, uni_distance=True, num_directions=4
     else:
         assert num_directions == 8
         directions = DIRECTIONS_INCL_DIAGONALS
+
+    if isinstance(grid, Grid):
+        grid = grid.to_list()
 
     graph = {}
     ysize = len(grid)
