@@ -1,20 +1,27 @@
 from queue import Queue
 import heapq
 import functools
-from typing import Any, Dict, List, Union
+from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
 from yal.geo2d import Point
 from yal.grid import DIRECTIONS, DIRECTIONS_INCL_DIAGONALS, Grid
 
+Tn = TypeVar("Tn")
 
-def bfs(graph, start, func=None) -> Dict[Any, int]:
+def bfs(graph: Dict[Tn, List[Tn]], start: Union[Tn,List[Tn]], func:Optional[Callable[[Tn, int], None]]=None,) -> Dict[Any, int]:
     '''Performs a BFS search in a graph and returns the distans to all nodes visited.
+    Start can either be a list of nodes or a single node.
     If func is set, calls func(node, dist) when each node is visited.
     graph: {node: [neighbors]}
     '''
-    dist = {}  # node -> distance
-    q = Queue()
-    q.put(start)
-    dist[start] = 0
+    dist: Dict[Tn, int] = {}  # node -> distance
+    q = Queue[Tn]()
+    if isinstance(start, list):
+        for p in start:
+            q.put(p)
+            dist[p] = 0
+    else:
+        q.put(start)
+        dist[start] = 0
     while not q.empty():
         current = q.get()
         steps = dist[current]
@@ -203,10 +210,10 @@ def topological_sort(graph):
     return result
 
 
-def grid_graph(grid: Union[Grid, List[str]], is_node, get_edge=None, uni_distance=True, num_directions=4):
+def grid_graph(grid: Union[Grid, List[str]], is_node=None, get_edge=None, uni_distance=True, num_directions=4):
     '''Converts a grid (line of strings) into a graph given two functions.
     The is_node function takes a Point and character and returns True if
-    the position is a node.
+    the position is a node. Defaults to alwayas return True.
     The get_edge function takes Point, char, Point, char (from - to) and
     returns True (or distance) between the nodes. If uni_distance is true,
     no distances will be added, only the edge.
@@ -217,6 +224,9 @@ def grid_graph(grid: Union[Grid, List[str]], is_node, get_edge=None, uni_distanc
     else:
         assert num_directions == 8
         directions = DIRECTIONS_INCL_DIAGONALS
+
+    if is_node is None:
+        is_node = lambda p,c: True
 
     if isinstance(grid, Grid):
         grid = grid.to_list()

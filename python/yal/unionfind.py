@@ -1,10 +1,10 @@
 class UnionFind:
-    def __init__(self, n):
+    def __init__(self, n: int):
         '''Initializes a new UnionFind structure with n elements.'''
         self.p = [i for i in range(n)]
         self.size = [1 for i in range(n)]
 
-    def find_set(self, e):
+    def find_set(self, e: int):
         v = e
         while self.p[v] != v:
             v = self.p[v]
@@ -16,7 +16,7 @@ class UnionFind:
             self.p[t] = root
         return root
 
-    def union_set(self, a, b):
+    def union_set(self, a: int, b: int):
         a = self.find_set(a)
         b = self.find_set(b)
         if a == b:

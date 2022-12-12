@@ -1,45 +1,52 @@
 import re
 import itertools
 import string
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Tuple, TypeVar, Union
+
+T = TypeVar("T")
 
 _integer_pattern = re.compile(r"-?[0-9]+")
+_non_neg_integer_pattern = re.compile(r"[0-9]+")
 _token_pattern = re.compile(r"[A-Za-z0-9]+")
 _token_pattern_with_dash = re.compile(r"[\-A-Za-z0-9]+")
 
 
-def get_ints(line):
+def get_ints(line: str) -> List[int]:
     '''Detects all integers in a line an returns a list of them. Non-integer tokens are ignored.'''
     return [int(m) for m in _integer_pattern.findall(line)]
 
+def get_non_negative_ints(line: str) -> List[int]:
+    '''Detects all non-negative integers in a line an returns a list of them. Non-integer tokens are ignored.'''
+    return [int(m) for m in _non_neg_integer_pattern.findall(line)]
 
-def tokenize(line):
+
+def tokenize(line: str) -> List[str]:
     '''Splits a line into tokens made up of alpha numerical characters'''
     return [s for s in _token_pattern.findall(line)]
 
 
-def is_int(s):
+def is_int(s: str) -> bool:
     '''Determines if a string is an int.'''
-    return s.isdigit() or (len(s) and s[0] == '-' and s[1:].isdigit())
+    return s.isdigit() or (len(s) > 0 and s[0] == '-' and s[1:].isdigit())
 
 
-def intify(line):
+def intify(lines: List[str]) -> List[Union[int, str]]:
     '''Converts a list of strings into a list of mixed int/strings depending on if a string can be parsed as an int.
     If something looks like an int, it probably is.'''
-    return [int(s) if is_int(s) else s for s in line]
+    return [int(s) if is_int(s) else s for s in lines]
 
 
-def tokenize_minus(line):
+def tokenize_minus(line: str) -> List[str]:
     '''Same as tokenize but in addition - is not a separator (negative numbers)'''
     return [s for s in _token_pattern_with_dash.findall(line)]
 
 
-def pair_up(data, pair_size=2):
+def pair_up(data: List[T], pair_size=2) -> List[Tuple[T, T]]:
     '''Transform [a,b,c,d,e,f] => [(a,b),(c,d),(e,f)]'''
     return [tuple(data[i:i+pair_size]) for i in range(0, len(data), pair_size)]
 
 
-def chunk(s, chunk_size):
+def chunk(s: List[str], chunk_size: int) -> List[str]:
     '''Splits a string into chunks given the specified chunk size'''
     res = []
     i = 0
@@ -48,7 +55,21 @@ def chunk(s, chunk_size):
         i += chunk_size
     return res
 
-def init_matrix(ysize, xsize, init=0):
+def split_lines(lines: List[str], delimeter: str = "") -> List[List[str]]:
+    '''Splits a list of strings into groups based on a delimeter string.'''
+    # Note: An empty input list will result in [[]] as output
+    res = []
+    cur = []
+    for line in lines:
+        if line == delimeter:
+            res.append(cur)
+            cur = []
+        else:
+            cur.append(line)
+    res.append(cur)
+    return res
+
+def init_matrix(ysize: int, xsize: int, init=0) -> List[List]:
     '''Initialized an empty matrix.'''
     return [[init] * xsize for _ in range(ysize)]
 
@@ -61,15 +82,23 @@ def matrix_filter(m, condition):
                 res.append((col, row))
     return res
 
-def lower_letters(num=26):
+def lower_letters(num:int=26) -> str:
     '''Returns a string of the first num lowercase letters'''
     return string.ascii_lowercase[:num]
 
-def upper_letters(num=26):
+def upper_letters(num:int=26) -> str:
     '''Returns a string of the first num uppercase letters'''
     return string.ascii_uppercase[:num]
 
-def string_to_mask(s):
+def letter_value(c: str) -> int:
+    '''Returns 0-25 for a-z, 26-51 for A-Z'''
+    assert len(c) == 1
+    if c[0] >= 'a' and c[0] <= 'z':
+        return ord(c[0])-ord('a')
+    assert c[0] >= 'A' and c[0] <= 'Z'
+    return ord(c[0])-ord('A')+26
+
+def string_to_mask(s: str) -> int:
     '''Converts a string of letters a-z, A-Z into a corresponding bitmask (52 bits)'''
     mask = 0
     for c in s:
@@ -79,7 +108,20 @@ def string_to_mask(s):
             mask |= 1 << (ord(c) - ord('A') + 26)
     return mask
 
-def count_bits(i):
+def bits_set(v: int) -> List[int]:
+    '''Returns a list of all set bits in the input integer'''
+    res = []
+    i = 0
+    j = 1
+    while v > 0:
+        if v & j:
+            v -= j
+            res.append(i)
+        i += 1
+        j *= 2
+    return res
+
+def count_bits(i: int) -> int:
     '''Count number of bits set in an int'''
     cnt = 0
     while i:
@@ -88,7 +130,7 @@ def count_bits(i):
     return cnt
 
 
-def eval_expr(expr):
+def eval_expr(expr: str):
     # This is an example from AoC 2020 day 18 that applies + before * on an integer expression
 
     # Recursively replace the innermost ( ) expression with its evaluation
@@ -136,7 +178,7 @@ def get_matrix(line_stream) -> Optional[List[List[int]]]:
             break
     return rows
 
-def sign(x):
+def sign(x: int)->int:
     if x < 0:
         return -1
     if x > 0:

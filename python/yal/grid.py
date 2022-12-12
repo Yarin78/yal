@@ -1,5 +1,5 @@
 import sys
-from typing import Callable, Iterable, List, Optional, Tuple
+from typing import Callable, Iterable, List, Optional, Tuple, Union
 from yal.geo2d import Point
 
 
@@ -127,15 +127,19 @@ class Grid:
         for y in range(self.ysize):
             assert self.xsize == len(self.cells[y]), f"Row 0 and row {y} in grid have different length ({self.xsize-2*len(border)} != {len(self.cells[y])-2*len(border)})"
 
-    def __getitem__(self, coord: Tuple[int, int]):
+    def __getitem__(self, coord: Union[Tuple[int, int], Point]):
         '''Gets an element in the grid. Coordinates are y,x'''
+        if isinstance(coord, Point):
+            coord = (coord.y, coord.x)
         x = coord[1]-self.xofs
         y = coord[0]-self.yofs
         # assert y >= 0 and y < len(self.cells) and x >= 0 and x < len(self.cells[0])
         return self.cells[y][x]
 
-    def __setitem__(self, coord: Tuple[int, int], ch: str):
+    def __setitem__(self, coord: Union[Tuple[int, int], Point], ch: str):
         '''Sets an element in the grid. Coordinates are y,x'''
+        if isinstance(coord, Point):
+            coord = (coord.y, coord.x)
         x = coord[1]-self.xofs
         y = coord[0]-self.yofs
         # assert y >= 0 and y < self.ysize and x >= 0 and x < self.xsize
@@ -162,6 +166,12 @@ class Grid:
             Point(x+self.xofs,y+self.yofs) for y in range(self.ysize) for x in range(self.xsize)
             if self.cells[y][x] in ch
         ]
+
+    def find_and_replace(self, ch: str, repl_ch: str) -> List[Point]:
+        res = self.find(ch)
+        for p in res:
+            self.cells[p.y][p.x] = repl_ch
+        return res
 
     def find_first(self, ch: str) -> Optional[Point]:
         find_all = self.find(ch)
