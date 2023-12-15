@@ -46,8 +46,21 @@ def pair_up(data: List[T], pair_size=2) -> List[Tuple[T, T]]:
     return [tuple(data[i:i+pair_size]) for i in range(0, len(data), pair_size)]
 
 
+def multi_split(s: str, delimeters: List[str]):
+    # Split a string by a delimter, then split all parts of that by the next delimeter, and so on
+    # Returns a multidimension array, same number of dimensions as elements in delimeters
+    if not delimeters:
+        return s
+    parts = s.split(delimeters[0])
+    ans = []
+    for p in parts:
+        sp = multi_split(p, delimeters[1:])
+        if sp:
+            ans.append(sp)
+    return ans
+
 def chunk(s: List[str], chunk_size: int) -> List[str]:
-    '''Splits a string into chunks given the specified chunk size'''
+    '''Splits a string or list into chunks given the specified chunk size'''
     res = []
     i = 0
     while i < len(s):
@@ -199,3 +212,21 @@ def transpose_matrix(matrix: List[List[Any]]) -> List[List[Any]]:
         for col_ix, col in enumerate(row):
             result[col_ix].append(col)
     return result
+
+def replace_wildcards(pattern: str, wildcard: str, replacements: List[str]):
+    '''
+    Generates all possible replacement of a specific wildcard string
+    in a pattern, by replacing them with any of the values in replacements.
+    '''
+
+    def _generate_rec(cur: str, ix: int):
+        if ix == len(pattern):
+            yield cur
+        else:
+            if pattern[ix] != wildcard:
+                yield from _generate_rec(cur + pattern[ix], ix+1)
+            else:
+                for repl in replacements:
+                    yield from _generate_rec(cur + repl, ix+1)
+
+    yield from _generate_rec("", 0)

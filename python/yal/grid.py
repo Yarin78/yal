@@ -183,6 +183,73 @@ class Grid:
     def all_points(self) -> List[Point]:
         return [Point(x+self.xofs,y+self.yofs) for y in range(self.ysize) for x in range(self.xsize)]
 
+    def edge_points(self, edge_dir: Point) -> List[Point]:
+        '''
+        Gets a list of all points along one of the four edges
+        NORTH, SOUTH, WEST or EAST in clockwise order
+        '''
+        if edge_dir == NORTH:
+            return [Point(x+self.xofs, self.yofs) for x in range(self.xsize)]
+        if edge_dir == EAST:
+            return [Point(self.xsize-1+self.xofs, y+self.yofs) for y in range(self.ysize)]
+        if edge_dir == SOUTH:
+            return [Point(x+self.xofs, self.ysize-1+self.yofs) for x in range(self.xsize-1, -1, -1)]
+        if edge_dir == WEST:
+            return [Point(self.xofs, y+self.yofs) for y in range(self.ysize-1, -1, -1)]
+        if edge_dir == NORTH_WEST:
+            return [Point(self.xofs, self.yofs)]
+        if edge_dir == NORTH_EAST:
+            return [Point(self.xofs+self.xsize-1, self.yofs)]
+        if edge_dir == SOUTH_EAST:
+            return [Point(self.xofs+self.xsize-1, self.yofs+self.ysize-1)]
+        if edge_dir == SOUTH_WEST:
+            return [Point(self.xofs, self.yofs+self.ysize-1)]
+        assert False
+
+    def get_empty_rows(self, empty_ch: str) -> List[int]:
+        '''
+        Gets a list of all empty rows in the grid
+        where empty_ch is a string containing possible empty characters
+        '''
+        return [y for y in range(self.ysize) if all(self[y, x] in empty_ch for x in range(self.xsize))]
+
+    def get_empty_cols(self, empty_ch: str) -> List[int]:
+        '''
+        Gets a list of all empty rows in the grid
+        where empty_ch is a string containing possible empty characters
+        '''
+        return [x for x in range(self.xsize) if all(self[y, x] in empty_ch for y in range(self.ysize))]
+
+    def get_row_masks(self, empty_ch: str = '.') -> List[int]:
+        '''
+        Gets a list of bitmasks (ints) representing each row, bit 0 being the first column
+        '''
+        ints = []
+        for y in range(self.ysize):
+            mask_sum = 0
+            mask_bit = 1
+            for x in range(self.xsize):
+                if self[y, x] not in empty_ch:
+                    mask_sum += mask_bit
+                mask_bit *= 2
+            ints.append(mask_sum)
+        return ints
+
+    def get_col_masks(self, empty_ch: str = '.') -> List[int]:
+        '''
+        Gets a list of bitmasks (ints) representing each row, bit 0 being the first column
+        '''
+        ints = []
+        for x in range(self.xsize):
+            mask_sum = 0
+            mask_bit = 1
+            for y in range(self.ysize):
+                if self[y, x] not in empty_ch:
+                    mask_sum += mask_bit
+                mask_bit *= 2
+            ints.append(mask_sum)
+        return ints
+
     def neighbors(self, p: Point, num_dir=4) -> List[Point]:
         '''
         Returns a list of all neighboring points to another point.
@@ -222,8 +289,37 @@ class Grid:
         data = [''.join(func(self, x+self.xofs, y+self.yofs) for x in range(-extend, self.xsize+extend)) for y in range(-extend, self.ysize+extend)]
         return Grid(data, '', self.xofs+extend, self.yofs+extend)
 
+    def rotate_cw(self):
+        assert self.xofs == 0 and self.yofs == 0  # Doesn't work with borders
+        res = []
+        for x in range(self.xsize):
+            s = ""
+            for y in range(self.ysize):
+                s += self.cells[self.ysize-1-y][x]
+            res.append(s)
+        return Grid(res)
+
+    def rotate_ccw(self):
+        assert self.xofs == 0 and self.yofs == 0  # Doesn't work with borders
+        res = []
+        for x in range(self.xsize):
+            s = ""
+            for y in range(self.ysize):
+                s += self.cells[y][self.xsize-1-x]
+            res.append(s)
+        return Grid(res)
+
     def to_list(self) -> List[str]:
         return [''.join(row) for row in self.cells]
+
+    def get_hash_key(self) -> int:
+        h = 0
+        MOD = 200560490131
+        for row in self.cells:
+            for el in row:
+                h = (h * 211 + el.__hash__()) % MOD
+        return h
+
 
     def show(self):
         for row in self.cells:

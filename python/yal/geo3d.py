@@ -114,3 +114,12 @@ class Block:
         ]
 
         return [Block(b1, b2) for (b1, b2) in splits if b1.x<b2.x and b1.y<b2.y and b1.z<b2.z]
+
+ORTHOGONAL_DIRECTIONS = [
+    Point(1, 0, 0),
+    Point(-1, 0, 0),
+    Point(0, 1, 0),
+    Point(0, -1, 0),
+    Point(0, 0, 1),
+    Point(0, 0, -1),
+]
