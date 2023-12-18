@@ -212,3 +212,11 @@ def line_equation(line):
     eb /= d
     ec = ea * line.a.x + eb * line.a.y
     return [ea, eb, ec]
+
+def polygon_area(points: List[Point]):
+    n = len(points)
+    area = 0
+    for i in range(n):
+        area += points[(i+1)%n].y * points[i].x - points[i].y * points[(i+1)%n].x
+
+    return abs(area / 2)
