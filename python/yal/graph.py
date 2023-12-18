@@ -1,9 +1,11 @@
 from queue import Queue
+from collections import defaultdict
 import heapq
 import functools
-from typing import Any, Callable, Dict, List, Optional, TypeVar, Union
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TypeVar, Union
 from yal.geo2d import Point
 from yal.grid import DIRECTIONS, DIRECTIONS_INCL_DIAGONALS, Grid
+from numbers import Number
 
 Tn = TypeVar("Tn")
 
@@ -209,6 +211,56 @@ def topological_sort(graph):
 
     return result
 
+def max_flow(graph: Dict[Tn, List[Tuple[Tn, int]]], source: Tn, sink: Tn):
+    '''
+    Determines the maximum flow between source and sink in a directed graph
+    graph: {node: [(neighbor, capacity)]}
+    '''
+
+    # Create a new graph with all edges since we need backedges
+    edges: Dict[Tn, List[Tn]] = defaultdict(list)
+    capacity: Dict[Tuple[Tn,Tn], int] = defaultdict(int)  # (v1,v2) -> number
+    flow: Dict[Tuple[Tn,Tn], int] = defaultdict(int)  # (v1,v2) -> number
+
+    max_edge_capacity = 0
+    for node, neighbors in graph.items():
+        for v, cap in neighbors:
+            if node != sink:
+                edges[node].append(v)
+            if node != source:
+                edges[v].append(node)
+            capacity[(node, v)] += cap      
+            max_edge_capacity = max(max_edge_capacity, cap)
+
+    visited: Set[Tn] = set()
+
+    def go(cur: Tn, current_flow: int) -> int:
+        nonlocal visited, flow, capacity, sink
+        if cur == sink:
+            return current_flow
+        
+        if cur in visited or current_flow == 0:
+            return 0
+        # print(f"at {cur}, cur flow {current_flow}")
+        
+        visited.add(cur)
+        for v in edges[cur]:
+            f = go(v, min(current_flow, capacity[(cur,v)] - flow[(cur, v)] + flow[(v, cur)]))
+            if f > 0:
+                flow[(cur, v)] += f
+                # print(f"flow {cur}->{v} += {f}")
+                return f
+        return 0
+    
+    total_flow = 0
+    added_flow = go(source, max_edge_capacity)
+    while added_flow:
+        # print(f"Added flow {added_flow}")
+        total_flow += added_flow        
+        visited = set()
+        added_flow = go(source, max_edge_capacity)
+
+    return total_flow
 
 def grid_graph(grid: Union[Grid, List[str]], is_node=None, get_edge=None, uni_distance=True, num_directions=4):
     '''Converts a grid (line of strings) into a graph given two functions.
@@ -256,7 +308,6 @@ def grid_graph(grid: Union[Grid, List[str]], is_node=None, get_edge=None, uni_di
 
     return graph
 
-
 if __name__ == "__main__":
     g = {
         0: [(1, 3), (2, 8)],
@@ -301,6 +352,18 @@ if __name__ == "__main__":
         '#...#.....'
     ]
 
-    g = grid_graph(grid, is_node=lambda p, c: c == '#', get_edge=lambda p1, c1, p2, c2: 1, uni_distance=False)
-    for n, neighbors in g.items():
-        print(n, neighbors)
+    # g = grid_graph(grid, is_node=lambda p, c: c == '#', get_edge=lambda p1, c1, p2, c2: 1, uni_distance=False)
+    # for n, neighbors in g.items():
+    #     print(n, neighbors)
+
+
+    graph = {
+        0: [(1,5), (2, 10), (4, 4)],
+        1: [(3,1), (6,3) ],
+        2: [(3,7), (4,3), (5,7)],
+        3: [(6, 5)],
+        4: [(5, 6)],
+        5: [(6, 4)]
+    }
+
+    print("max flow", max_flow(graph, 0, 6))
