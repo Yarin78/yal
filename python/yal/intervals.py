@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import List, Tuple
 from intervaltree import IntervalTree, Interval
 
@@ -16,7 +17,7 @@ if __name__ == "__main__":
 
     print(t.envelop(6, 17))  # {Interval(8, 17)}
 
-    t.merge_overlaps() 
+    t.merge_overlaps()
     print(t) # IntervalTree([Interval(3, 8), Interval(8, 18)])
     t.chop(6, 12)
     print(t)  # IntervalTree([Interval(3, 6), Interval(12, 18)])
@@ -34,6 +35,8 @@ if __name__ == "__main__":
     t.add(Interval(14, 20, 2))
     print(t)  # IntervalTree([Interval(3, 10, 7), Interval(8, 15, 4), Interval(14, 20, 2)])
     t.merge_overlaps()
+
+
 
 class Intervals:
     '''Represents a set of non-overlapping intervals in a discrete space

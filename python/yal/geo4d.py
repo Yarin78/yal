@@ -28,7 +28,7 @@ class Point:
             if almost_equal(self.y, other.y):
                 if almost_equal(self.x, other.x):
                     if almost_equal(self.h, other.h):
-                        return 0
+                        return False
                     return self.h < other.h
                 return self.x < other.x
             return self.y < other.y

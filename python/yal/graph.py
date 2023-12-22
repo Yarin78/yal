@@ -9,12 +9,26 @@ from numbers import Number
 
 Tn = TypeVar("Tn")
 
-def bfs(graph: Dict[Tn, List[Tn]], start: Union[Tn,List[Tn]], func:Optional[Callable[[Tn, int], None]]=None,) -> Dict[Any, int]:
-    '''Performs a BFS search in a graph and returns the distans to all nodes visited.
+# To visualize a graph, use graphviz: https://pypi.org/project/graphviz/
+#
+# brew install graphviz && pip install graphviz
+#
+# dot = graphviz.Digraph()
+# dot.node("A", color="green")
+# dot.edge("A", "B", color="red")
+# dot.render("viz/my_graph", cleanup=True)
+
+
+def bfs(
+    graph: Dict[Tn, List[Tn]],
+    start: Union[Tn, List[Tn]],
+    func: Optional[Callable[[Tn, int], None]] = None,
+) -> Dict[Any, int]:
+    """Performs a BFS search in a graph and returns the distans to all nodes visited.
     Start can either be a list of nodes or a single node.
     If func is set, calls func(node, dist) when each node is visited.
     graph: {node: [neighbors]}
-    '''
+    """
     dist: Dict[Tn, int] = {}  # node -> distance
     q = Queue[Tn]()
     if isinstance(start, list):
@@ -37,11 +51,12 @@ def bfs(graph: Dict[Tn, List[Tn]], start: Union[Tn,List[Tn]], func:Optional[Call
 
 
 def dfs(graph, start, func=None):
-    '''Performs a DFS search in a graph and returns a set of all nodes visited
+    """Performs a DFS search in a graph and returns a set of all nodes visited
     If func is set, calls func(node) when each node is visited.
     graph: {node: [neighbors]}
-    '''
+    """
     seen = set()
+
     def go(current):
         nonlocal seen, graph, func
         if current not in seen:
@@ -50,23 +65,26 @@ def dfs(graph, start, func=None):
             seen.add(current)
             for neighbor in graph.get(current, []):
                 go(neighbor)
+
     go(start)
     return seen
 
 
 def search_all(graph, graph_search_func, func=None):
-    '''Calls the graph_search_func on an arbitrary node, repeats on a non-visited node,
+    """Calls the graph_search_func on an arbitrary node, repeats on a non-visited node,
     repeats until all nodes in graph covered.
     Returns an array of the output from the graph_search_func.
     If func is set, calls func(iteration, node) when each node is visited.
     graph: {node: [neighbors]}
-    '''
+    """
     result = []
     visited = set()
     iteration = 0
     for node in graph.keys():
         if node not in visited:
-            res = graph_search_func(graph, node, functools.partial(func, iteration) if func else None)
+            res = graph_search_func(
+                graph, node, functools.partial(func, iteration) if func else None
+            )
             result.append(res)
             visited = visited.union(res.keys() if isinstance(res, dict) else res)
             iteration += 1
@@ -95,8 +113,8 @@ def _add_reverse_edges(new_graph, graph):
 
 
 def reverse_graph(graph):
-    '''Creates a new graph that is the edge-reverse of the given graph.
-    Works both with or without distances.'''
+    """Creates a new graph that is the edge-reverse of the given graph.
+    Works both with or without distances."""
 
     new_graph = {}
     _add_reverse_edges(new_graph, graph)
@@ -104,8 +122,8 @@ def reverse_graph(graph):
 
 
 def symmetric_graph(graph):
-    '''Adds reverse edges (in-place) to the graph so it becomes symmetric.
-    Works both with or without distances.'''
+    """Adds reverse edges (in-place) to the graph so it becomes symmetric.
+    Works both with or without distances."""
 
     new_graph = {node: list(neighbors) for node, neighbors in graph.items()}
     _add_reverse_edges(new_graph, graph)
@@ -113,10 +131,10 @@ def symmetric_graph(graph):
 
 
 def dijkstra(graph, start, func=None):
-    '''Performs a shortest-path in a graph and returns the distance to all nodes visited.
+    """Performs a shortest-path in a graph and returns the distance to all nodes visited.
     If func is set, calls func(node, dist) when each node is visited.
     graph: {node: [(neighbor, distance)]}
-    '''
+    """
     dist = {}
     q = []
 
@@ -133,13 +151,14 @@ def dijkstra(graph, start, func=None):
             if func:
                 func(cur, cur_dist)
             if cur in graph:
-                for (x, d) in graph[cur]:
+                for x, d in graph[cur]:
                     add(x, cur_dist + d)
 
     return dist
 
+
 def dijkstra2(start, neighbors, hash_func=None, approx_func=None, done_func=None):
-    '''Performs a shortest-path in a graph and returns the distance to all nodes visited.
+    """Performs a shortest-path in a graph and returns the distance to all nodes visited.
     neighbors is a function that takes a state and return a list of tuples containing
     neighboring nodes and the distance.
     If the state is not hashable, set hash_func to something that maps the state to a unique hashable value
@@ -147,7 +166,7 @@ def dijkstra2(start, neighbors, hash_func=None, approx_func=None, done_func=None
     a minimum cost required to reach the target end state
     If done_func is set, the search is aborted if it's evaluated to true and the returned value is instead
     the dist (or None if the end is never reached)
-    '''
+    """
     dist = {}
     q = []
 
@@ -166,16 +185,17 @@ def dijkstra2(start, neighbors, hash_func=None, approx_func=None, done_func=None
             return cur_dist
         cur_hash = hash_func(cur) if hash_func else cur
         if cur_dist == dist[cur_hash]:
-            for (x, d) in neighbors(cur):
+            for x, d in neighbors(cur):
                 add(x, cur_dist + d)
 
     return None if done_func else dist
 
+
 def topological_sort(graph):
-    '''Performs a topological sort on a graph. Each node in the graph contains
+    """Performs a topological sort on a graph. Each node in the graph contains
     the dependencies that will be included before the node in the output.
     graph: {node: [neighbors]}
-    '''
+    """
 
     q = []  # nodes that can be processed; min-heap so they get in lowest-order
     degree = {}  # node -> outdegree
@@ -199,7 +219,7 @@ def topological_sort(graph):
     result = []
     while len(result) < len(seen):
         if not len(q):
-            raise Exception('Circular graph')
+            raise Exception("Circular graph")
         current = heapq.heappop(q)
         result.append(current)
         if current in reverse:
@@ -211,16 +231,17 @@ def topological_sort(graph):
 
     return result
 
+
 def max_flow(graph: Dict[Tn, List[Tuple[Tn, int]]], source: Tn, sink: Tn):
-    '''
+    """
     Determines the maximum flow between source and sink in a directed graph
     graph: {node: [(neighbor, capacity)]}
-    '''
+    """
 
     # Create a new graph with all edges since we need backedges
     edges: Dict[Tn, List[Tn]] = defaultdict(list)
-    capacity: Dict[Tuple[Tn,Tn], int] = defaultdict(int)  # (v1,v2) -> number
-    flow: Dict[Tuple[Tn,Tn], int] = defaultdict(int)  # (v1,v2) -> number
+    capacity: Dict[Tuple[Tn, Tn], int] = defaultdict(int)  # (v1,v2) -> number
+    flow: Dict[Tuple[Tn, Tn], int] = defaultdict(int)  # (v1,v2) -> number
 
     max_edge_capacity = 0
     for node, neighbors in graph.items():
@@ -229,7 +250,7 @@ def max_flow(graph: Dict[Tn, List[Tuple[Tn, int]]], source: Tn, sink: Tn):
                 edges[node].append(v)
             if node != source:
                 edges[v].append(node)
-            capacity[(node, v)] += cap      
+            capacity[(node, v)] += cap
             max_edge_capacity = max(max_edge_capacity, cap)
 
     visited: Set[Tn] = set()
@@ -238,38 +259,52 @@ def max_flow(graph: Dict[Tn, List[Tuple[Tn, int]]], source: Tn, sink: Tn):
         nonlocal visited, flow, capacity, sink
         if cur == sink:
             return current_flow
-        
+
         if cur in visited or current_flow == 0:
             return 0
         # print(f"at {cur}, cur flow {current_flow}")
-        
+
         visited.add(cur)
         for v in edges[cur]:
-            f = go(v, min(current_flow, capacity[(cur,v)] - flow[(cur, v)] + flow[(v, cur)]))
+            f = go(
+                v,
+                min(current_flow, capacity[(cur, v)] - flow[(cur, v)] + flow[(v, cur)]),
+            )
             if f > 0:
                 flow[(cur, v)] += f
                 # print(f"flow {cur}->{v} += {f}")
                 return f
         return 0
-    
+
     total_flow = 0
     added_flow = go(source, max_edge_capacity)
     while added_flow:
         # print(f"Added flow {added_flow}")
-        total_flow += added_flow        
+        total_flow += added_flow
         visited = set()
         added_flow = go(source, max_edge_capacity)
 
     return total_flow
 
-def grid_graph(grid: Union[Grid, List[str]], is_node=None, get_edge=None, uni_distance=True, num_directions=4):
-    '''Converts a grid (line of strings) into a graph given two functions.
-    The is_node function takes a Point and character and returns True if
-    the position is a node. Defaults to alwayas return True.
-    The get_edge function takes Point, char, Point, char (from - to) and
-    returns True (or distance) between the nodes. If uni_distance is true,
-    no distances will be added, only the edge.
-    num_directions should either be 4 (not diagonals) or 8 (with diagonals).'''
+
+def grid_graph(
+    grid: Union[Grid, List[str]],
+    is_node: Callable[[Point, str], bool]|str|None = None,
+    get_edge: Optional[Callable[[Point, str, Point, str], bool]]=None,
+    uni_distance=True,
+    num_directions=4,
+):
+    """Converts a grid (line of strings) into a graph given two functions.
+
+    is_node is either a function determining if a position/character in the grid
+    is a node, or a string of valid node characters. If not set, all grid elements will become nodes.
+
+    get_edge is a funcion determining if there should be an edge between two node.
+    Returns True (or distance) between the nodes.
+
+    If uni_distance is true, no distances will be added, only the edge.
+
+    num_directions should either be 4 (not diagonals) or 8 (with diagonals)."""
 
     if num_directions == 4:
         directions = DIRECTIONS
@@ -278,7 +313,10 @@ def grid_graph(grid: Union[Grid, List[str]], is_node=None, get_edge=None, uni_di
         directions = DIRECTIONS_INCL_DIAGONALS
 
     if is_node is None:
-        is_node = lambda p,c: True
+        is_node = lambda p, c: True
+    elif isinstance(is_node, str):
+        node_chars = is_node
+        is_node = lambda p, c: c in node_chars
 
     if isinstance(grid, Grid):
         grid = grid.to_list()
@@ -308,6 +346,7 @@ def grid_graph(grid: Union[Grid, List[str]], is_node=None, get_edge=None, uni_di
 
     return graph
 
+
 if __name__ == "__main__":
     g = {
         0: [(1, 3), (2, 8)],
@@ -315,55 +354,41 @@ if __name__ == "__main__":
         2: [(4, 7)],
         3: [(5, 5)],
         4: [(1, 5), (3, 2), (5, 8)],
-        6: [(7, 3)]
+        6: [(7, 3)],
     }
 
-    h = {
-        0: [1, 2, 8],
-        1: [2, 3],
-        2: [4],
-        3: [5],
-        4: [1, 3, 5],
-        6: [7]
-    }
+    h = {0: [1, 2, 8], 1: [2, 3], 2: [4], 3: [5], 4: [1, 3, 5], 6: [7]}
 
-    #h = symmetric_graph(h)
-    #a = dfs_all(h)
+    # h = symmetric_graph(h)
+    # a = dfs_all(h)
 
-
-    #h = symmetric_graph(h)
-    #print(bfs_all(h, lambda i, x, steps: print(i,x,steps)))
+    # h = symmetric_graph(h)
+    # print(bfs_all(h, lambda i, x, steps: print(i,x,steps)))
 
     topg = {
         0: [5],
-        1: [5,2,2],
+        1: [5, 2, 2],
         2: [5],
         3: [5],
         4: [],
         5: [4],
     }
 
-    #print(topological_sort(topg))
+    # print(topological_sort(topg))
 
-    grid = [
-        '......#...',
-        '..##..###.',
-        '...#...#..',
-        '#...#.....'
-    ]
+    grid = ["......#...", "..##..###.", "...#...#..", "#...#....."]
 
     # g = grid_graph(grid, is_node=lambda p, c: c == '#', get_edge=lambda p1, c1, p2, c2: 1, uni_distance=False)
     # for n, neighbors in g.items():
     #     print(n, neighbors)
 
-
     graph = {
-        0: [(1,5), (2, 10), (4, 4)],
-        1: [(3,1), (6,3) ],
-        2: [(3,7), (4,3), (5,7)],
+        0: [(1, 5), (2, 10), (4, 4)],
+        1: [(3, 1), (6, 3)],
+        2: [(3, 7), (4, 3), (5, 7)],
         3: [(6, 5)],
         4: [(5, 6)],
-        5: [(6, 4)]
+        5: [(6, 4)],
     }
 
     print("max flow", max_flow(graph, 0, 6))

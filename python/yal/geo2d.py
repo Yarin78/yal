@@ -1,5 +1,6 @@
+from ast import TypeVar
 import math
-from typing import List, Tuple
+from typing import List, Sequence, Tuple
 
 EPSILON = 1e-9
 
@@ -39,7 +40,7 @@ class Point:
     def __lt__(self, other):
         if almost_equal(self.y, other.y):
             if almost_equal(self.x, other.x):
-                return 0
+                return False
             return self.x < other.x
         return self.y < other.y
 
@@ -111,6 +112,81 @@ class Line:
     def unit_vector(self):
         length = self.segment_length()
         return Point((self.b.x - self.a.x) / length, (self.b.y - self.a.y) / length)
+
+
+class Shape:
+    '''
+    Represents a set of discrete points in 2D space
+    '''
+
+    points: List[Point]
+
+    def __init__(self, points: Sequence[Point]):
+        self.points = sorted(points)
+
+    def __add__(self, offset: Point):
+        return Shape([p+offset for p in self.points])
+
+    def __sub__(self, offset: Point):
+        return Shape([p-offset for p in self.points])
+
+    def __mul__(self, scalar):
+        return Shape([p * scalar for p in self.points])
+
+    def __eq__(self, other: "Shape"):
+        return other and len(self.points) == len(other.points) and all(p1 == p2 for p1, p2 in zip(self.points, other.points))
+
+    def __ne__(self, other: "Shape"):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash(tuple(self.points))
+
+    def __str__(self):
+        return "[" + ",\n ".join(str(p) for p in self.points) + "]"
+
+    @staticmethod
+    def from_inclusive_coords(p1: Point, p2: Point) -> "Shape":
+        return Shape([Point(x, y) for x in range(min(p1.x, p2.x), max(p1.x, p2.x) + 1) for y in range(min(p1.y, p2.y), max(p1.y, p2.y) + 1)])
+
+
+    def bounding_range(self) -> Tuple[Point, Point]:
+        '''
+        Returns two coordinates represents the surrounding range of the shape
+        First coordinate is inclusive of shapes min coordinates
+        Second coordinate is exclusive of shapes max coordinate
+        '''
+        minx = min(p.x for p in self.points)
+        maxx = max(p.x for p in self.points) + 1
+        miny = min(p.y for p in self.points)
+        maxy = max(p.y for p in self.points) + 1
+        return (Point(minx, miny), Point(maxx, maxy))
+
+
+    def canonical(self) -> "Shape":
+        '''
+        Gets a canonical version of this shape by translating the coordinates
+        so that min x, y and z are all 0.
+        '''
+
+        minx = min(p.x for p in self.points)
+        miny = min(p.y for p in self.points)
+        offset = Point(minx, miny)
+        return Shape([p - offset for p in self.points])
+
+    def rotate_cw(self):
+        return Shape([Point(-p.y, p.x) for p in self.points])
+
+    def rotate_ccw(self):
+        return Shape([Point(p.y, -p.x) for p in self.points])
+
+    def rotations(self) -> List["Shape"]:
+        """Generates all 4 90-degree rotations of this shape"""
+        rots = []
+        rots.append(self)
+        for _ in range(3):
+            rots.append(rots[-1].rotate_cw())
+        return rots
 
 
 def det(a, b):
@@ -220,3 +296,10 @@ def polygon_area(points: List[Point]):
         area += points[(i+1)%n].y * points[i].x - points[i].y * points[(i+1)%n].x
 
     return abs(area / 2)
+
+if __name__ == "__main__":
+    shape = Shape([Point(1,2), Point(1,3), Point(1,4), Point(2,4)])
+
+    rotations = set(r.canonical() for r in shape.rotations())
+    for r in rotations:
+        print(r)
