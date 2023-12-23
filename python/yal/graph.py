@@ -2,7 +2,7 @@ from queue import Queue
 from collections import defaultdict
 import heapq
 import functools
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TypeVar, Union
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TypeVar, Union, cast
 from yal.geo2d import Point
 from yal.grid import DIRECTIONS, DIRECTIONS_INCL_DIAGONALS, Grid
 from numbers import Number
@@ -13,6 +13,7 @@ Tn = TypeVar("Tn")
 def show_graph(
     graph: Dict[Tn, List[Tn | Tuple[Tn, int]]],
     node_colors: Optional[Dict[Tn, str]] = None,
+    edge_colors: Optional[Dict[Tuple[Tn, Tn], str]] = None,
     output_name: str = "graph",
     digraph: bool = False
 ):
@@ -24,6 +25,11 @@ def show_graph(
     """
     import graphviz
 
+    if not edge_colors:
+        edge_colors = {}
+
+    edges_shown = set()
+
     dot = graphviz.Graph() if not digraph else graphviz.Digraph()
     # For more graphing options, see
     # https://pypi.org/project/graphviz/
@@ -31,13 +37,21 @@ def show_graph(
         dot.node(str(a), color=(node_colors or {}).get(a, "black"))
         for v in graph[a]:
             if isinstance(v, tuple):
-                b, w = v
+                b, w = cast(Tuple[Tn, int], v)
             else:
-                b = v
+                b = cast(Tn, v)
                 w = None
 
-            if not digraph and b > a:  # type: ignore
-                dot.edge(str(a), str(b), label=str(w) if w else None)
+            if digraph:
+                edge_color = edge_colors.get((a, b), "black")
+            else:
+                if (a, b) in edges_shown:
+                    continue
+                edges_shown.add((a, b))
+                edges_shown.add((b, a))
+                edge_color = edge_colors.get((a, b), edge_colors.get((b, a), "black"))
+
+            dot.edge(str(a), str(b), label=str(w) if w else None, color=edge_color)
 
     dot.render(output_name, cleanup=True)
 
@@ -336,9 +350,11 @@ def longest_path(
             return
 
         visited.add(cur)
+        path.append(cur)
         for neighbor, d in graph[cur]:
             go(neighbor, distance + d)
         visited.remove(cur)
+        path.pop()
 
     go(start, 0)
 
