@@ -9,14 +9,37 @@ from numbers import Number
 
 Tn = TypeVar("Tn")
 
-# To visualize a graph, use graphviz: https://pypi.org/project/graphviz/
-#
-# brew install graphviz && pip install graphviz
-#
-# dot = graphviz.Digraph()
-# dot.node("A", color="green")
-# dot.edge("A", "B", color="red")
-# dot.render("viz/my_graph", cleanup=True)
+
+def show_graph(
+    graph: Dict[Tn, List[Tn | Tuple[Tn, int]]],
+    node_colors: Optional[Dict[Tn, str]] = None,
+    output_name: str = "graph",
+    digraph: bool = False
+):
+    """
+    Creates a visualisation of a graph as a file on disk
+
+    Requires graphviz to be installed
+        brew install graphviz && pip install graphviz
+    """
+    import graphviz
+
+    dot = graphviz.Graph() if not digraph else graphviz.Digraph()
+    # For more graphing options, see
+    # https://pypi.org/project/graphviz/
+    for a in graph.keys():
+        dot.node(str(a), color=(node_colors or {}).get(a, "black"))
+        for v in graph[a]:
+            if isinstance(v, tuple):
+                b, w = v
+            else:
+                b = v
+                w = None
+
+            if not digraph and b > a:  # type: ignore
+                dot.edge(str(a), str(b), label=str(w) if w else None)
+
+    dot.render(output_name, cleanup=True)
 
 
 def bfs(
@@ -287,10 +310,81 @@ def max_flow(graph: Dict[Tn, List[Tuple[Tn, int]]], source: Tn, sink: Tn):
     return total_flow
 
 
+def longest_path(
+    graph: Dict[Tn, List[Tuple[Tn, int]]], start: Tn, goal: Tn
+) -> Tuple[int, List[Tn]]:
+    """
+    Finds the longest path in a graph from start to goal without visiting the same
+    node twice. Returns an empty path if no path from start to goal is found.
+    """
+    visited: Set[Tn] = set()
+    path: List[Tn] = []
+    best = 0
+    longest_path: List[Tn] = []
+
+    assert start != goal
+
+    def go(cur, distance):
+        nonlocal visited, path, best, longest_path
+        if cur == goal:
+            if distance > best:
+                best = distance
+                longest_path = list(path)
+            return
+
+        if cur in visited:
+            return
+
+        visited.add(cur)
+        for neighbor, d in graph[cur]:
+            go(neighbor, distance + d)
+        visited.remove(cur)
+
+    go(start, 0)
+
+    return (best, longest_path)
+
+
+def compress_paths(
+    graph: Dict[Tn, List[Tuple[Tn, int]]], fixed_nodes: Optional[List[Tn]] = None
+):
+    """
+    Removes all nodes in graph with two (bi-directional) edges by connecting
+    them directly and setting the distance to the sum of the ege distances.
+
+    Note that this may not work as expected on a pure directional graph.
+    """
+
+    def _find(edges: List[Tuple[Tn, int]], search: Tn):
+        for i, (v, _) in enumerate(edges):
+            if v == search:
+                return i
+        return -1
+
+    fixed = set(fixed_nodes or [])
+
+    all_nodes = list(graph.keys())
+    for node in all_nodes:
+        if node in fixed or len(graph[node]) != 2:
+            continue
+
+        a, wa = graph[node][0]
+        b, wb = graph[node][1]
+        ixa = _find(graph[a], node)
+        ixb = _find(graph[b], node)
+
+        if ixa >= 0 and ixb >= 0:
+            assert graph[a][ixa][1] == wa
+            assert graph[b][ixb][1] == wb
+            graph[a][ixa] = b, wa + wb
+            graph[b][ixb] = a, wa + wb
+            del graph[node]
+
+
 def grid_graph(
     grid: Union[Grid, List[str]],
-    is_node: Callable[[Point, str], bool]|str|None = None,
-    get_edge: Optional[Callable[[Point, str, Point, str], bool]]=None,
+    is_node: Callable[[Point, str], bool] | str | None = None,
+    get_edge: Optional[Callable[[Point, str, Point, str], bool | int]] = None,
     uni_distance=True,
     num_directions=4,
 ):
