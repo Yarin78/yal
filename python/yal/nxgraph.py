@@ -1,27 +1,124 @@
-from queue import Queue
-from collections import defaultdict
-import heapq
 import functools
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TypeVar, Union, cast
-from yal.geo2d import Point
+import heapq
+import networkx as nx
+from collections import defaultdict
+from queue import Queue
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Hashable,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    TypeVar,
+    Union,
+    cast,
+)
 from yal.grid import DIRECTIONS, DIRECTIONS_INCL_DIAGONALS, Grid
-from numbers import Number
+from yal.geo2d import Point
 
 Tn = TypeVar("Tn")
 
+"""
+Create a graph:
+
+>>> G=nx.Graph()
+>>> G.add_edge("foo", "bar", weight=0.9)
+>>> G.add_edges_from([("foo", "baz"), (1, 7)])
+>>> G.add_node("single")
+>>> G.add_node("a", {"color": "red"})
+>>> H=nx.Graph({1: [3, 5], 2: [3,1]})
+>>> DH=nx.DiGraph(H)
+
+Mutate it:
+
+>>> nx.remove_node(1)
+>>> nx.remove_edge(1, 2)
+>>> nx.contracted_nodes(G, a, b, self_loop=False, copy=False)  # treat a and b as same node
+
+Inspect it: (the functions return a read-only view)
+
+>>> list(G.nodes)
+>>> list(G.edges)
+>>> list(G["foo"])  # lists neighboring nodes of foo
+>>> list(G.edges("foo")) # lists edges with foo
+>>> list(DG.in_edges("foo")) # lists incoming edges of foo in a digraph
+
+Transform it:
+
+>>> H = nx.convert_node_labels_to_integers(G)  # relabels nodes to 0, 1, 2 (can speed up run time)
+
+In general, a graph is stored as a dict-of-dict-of-dicts (node->node->attribute) and the structure
+is "node-centric", which is why G["foo"] gets the neighboring nodes (not edges).
+
+More fundamentals: https://networkx.org/documentation/stable/tutorial.html
+Also good introduction: https://networkx.org/documentation/stable/reference/introduction.html
+Algorithms: https://networkx.org/documentation/stable/reference/algorithms/index.html
+
+Many of the algorithms return a generator of the output.
+Below are some more common ones, but there are many, many more,
+including minor alternatives to the ones listed below
+
+Components / Connectivity:
+    connected_components(G)
+    strongly_connected_components(DG)
+    biconnected_components(G)
+    articulation_points(G)
+    bridges(G)
+    maximum_flow(G)
+    minimum_cut(G)
+    minimum_edge_cut(G)
+
+Shortest paths / Traversals:
+    shortest_path(G)  [Dijkstra or Bellman-Ford]
+    all_shortest_paths(G)
+    floyd_warshall(G)
+    dijkstra_path(G)
+    astar_path(G)
+      (more advanced interfaces here: https://networkx.org/documentation/stable/reference/algorithms/shortest_paths.html#module-networkx.algorithms.shortest_paths.unweighted)
+    dfs_preorder_nodes(G)
+    dfs_edges(G)  # visits all nodes if no source specified
+    bfs_edges(G)
+    bfs_layers(G)  # Multiple starts possible
+
+Cycles:
+    find_cycle(G)
+    eulerian_circuit(G)
+
+Bipartite / Matching / Covering
+    bipartite.maximum_matching(G)
+    min_edge_cover(G)
+    max_weight_matching(G)  # Generic matching, O(N^3)
+
+DAG/Tree algorithms:
+    topological_sort(G)  # if u->v exists, u will be before v in the sort
+    lexicographical_topological_sort(G)
+    dag_longest_path(G)
+    lowest_common_ancestor(G)
+    minimum_spanning_tree(G)
+
+Hashing / Isomorphishm / Similarity:
+    weisfeiler_lehman_graph_hash(G)  # isometric graphs will get same hash
+    is_isomorphic(G1, G2)
+    graph_edit_distance(G1, G2)
+"""
+
 
 def show_graph(
-    graph: Dict[Tn, List[Tn | Tuple[Tn, int]]],
+    graph: nx.Graph | nx.DiGraph,
     node_colors: Optional[Dict[Tn, str]] = None,
     edge_colors: Optional[Dict[Tuple[Tn, Tn], str]] = None,
     output_name: str = "graph",
     engine: Optional[str] = "neato",
-    digraph: bool = False,
 ):
     """
     Creates a visualisation of a graph as a file on disk
 
     Different layout engines: https://graphviz.org/docs/layouts/
+    "neato" is a good default spring model one.
+    "dot" for hierarchal graphs
 
     Requires graphviz to be installed
         brew install graphviz && pip install graphviz
@@ -32,11 +129,12 @@ def show_graph(
         edge_colors = {}
 
     edges_shown = set()
+    is_digraph = isinstance(graph, nx.DiGraph)
 
-    dot = graphviz.Graph() if not digraph else graphviz.Digraph()
+    dot = graphviz.Graph() if not is_digraph else graphviz.Digraph()
     # For more graphing options, see
     # https://pypi.org/project/graphviz/
-    for a in graph.keys():
+    for a in graph:
         dot.node(str(a), color=(node_colors or {}).get(a, "black"))
         for v in graph[a]:
             if isinstance(v, tuple):
@@ -45,7 +143,7 @@ def show_graph(
                 b = cast(Tn, v)
                 w = None
 
-            if digraph:
+            if is_digraph:
                 edge_color = edge_colors.get((a, b), "black")
             else:
                 if (a, b) in edges_shown:
@@ -59,8 +157,11 @@ def show_graph(
     dot.render(output_name, engine=engine, cleanup=True)
 
 
+# nx-equivalent: nx.shortest_path_length(G, source=start)
+#   or
+# [node for layer in nx.bfs_layers(G, start) for node in layer]
 def bfs(
-    graph: Dict[Tn, List[Tn]],
+    graph: nx.Graph | nx.DiGraph,
     start: Union[Tn, List[Tn]],
     func: Optional[Callable[[Tn, int], None]] = None,
 ) -> Dict[Any, int]:
@@ -83,18 +184,28 @@ def bfs(
         steps = dist[current]
         if func:
             func(current, steps)
-        for neighbor in graph.get(current, []):
+        for neighbor in graph[current]:
             if neighbor not in dist:
                 dist[neighbor] = steps + 1
                 q.put(neighbor)
     return dist
 
 
-def dfs(graph, start, func=None):
-    """Performs a DFS search in a graph and returns a set of all nodes visited
+# nx-equivalent: list(nx.dfs_preorder_nodes(G, start))
+# or
+# for node in nx.dfs_preorder_nodes(G, start):
+#    func(node)
+def dfs(
+    graph: nx.Graph | nx.DiGraph,
+    start: Union[Tn, List[Tn]],
+    func: Optional[Callable[[Tn], None]] = None,
+):
+    """
+    Performs a DFS search in a graph and returns a set of all nodes visited
     If func is set, calls func(node) when each node is visited.
     graph: {node: [neighbors]}
     """
+    seen_in_order = list()
     seen = set()
 
     def go(current):
@@ -102,15 +213,16 @@ def dfs(graph, start, func=None):
         if current not in seen:
             if func:
                 func(current)
+            seen_in_order.append(current)
             seen.add(current)
-            for neighbor in graph.get(current, []):
+            for neighbor in graph[current]:
                 go(neighbor)
 
     go(start)
-    return seen
+    return seen_in_order
 
 
-def search_all(graph, graph_search_func, func=None):
+def search_all(graph: nx.Graph | nx.DiGraph, graph_search_func, func=None):
     """Calls the graph_search_func on an arbitrary node, repeats on a non-visited node,
     repeats until all nodes in graph covered.
     Returns an array of the output from the graph_search_func.
@@ -120,7 +232,7 @@ def search_all(graph, graph_search_func, func=None):
     result = []
     visited = set()
     iteration = 0
-    for node in graph.keys():
+    for node in graph.nodes:
         if node not in visited:
             res = graph_search_func(
                 graph, node, functools.partial(func, iteration) if func else None
@@ -139,38 +251,27 @@ def bfs_all(graph, func=None):
     return search_all(graph, bfs, func)
 
 
-def _add_reverse_edges(new_graph, graph):
-    for node, neighbors in graph.items():
-        for neighbor in neighbors:
-            if isinstance(neighbor, tuple):
-                if neighbor[0] not in new_graph:
-                    new_graph[neighbor[0]] = []
-                new_graph[neighbor[0]].append([node] + list(neighbor[1:]))
-            else:
-                if neighbor not in new_graph:
-                    new_graph[neighbor] = []
-                new_graph[neighbor].append(node)
-
-
-def reverse_graph(graph):
+def reverse_graph(graph: nx.DiGraph) -> nx.DiGraph:
     """Creates a new graph that is the edge-reverse of the given graph.
     Works both with or without distances."""
 
-    new_graph = {}
-    _add_reverse_edges(new_graph, graph)
-    return new_graph
+    return graph.reverse(True)
 
 
-def symmetric_graph(graph):
-    """Adds reverse edges (in-place) to the graph so it becomes symmetric.
+def symmetric_graph(graph: nx.DiGraph) -> nx.DiGraph:
+    """Returns a new graph containing all edges of the original
+    graph and corresponding reverse edges so to the graph so it becomes symmetric.
     Works both with or without distances."""
 
-    new_graph = {node: list(neighbors) for node, neighbors in graph.items()}
-    _add_reverse_edges(new_graph, graph)
-    return new_graph
+    return graph.to_undirected().to_directed()
 
 
-def dijkstra(graph, start, func=None):
+# Use nx.shortest_path_length(graph, start) instead
+def dijkstra(
+    graph: nx.Graph | nx.DiGraph,
+    start: Tn,
+    func: Optional[Callable[[Tn, int], None]] = None,
+):
     """Performs a shortest-path in a graph and returns the distance to all nodes visited.
     If func is set, calls func(node, dist) when each node is visited.
     graph: {node: [(neighbor, distance)]}
@@ -197,7 +298,14 @@ def dijkstra(graph, start, func=None):
     return dist
 
 
-def dijkstra2(start, neighbors, hash_func=None, approx_func=None, done_func=None):
+# Useful if graph can't be represented explicitly
+def dynamic_dijkstra(
+    start: Tn,
+    neighbors: Callable[[Tn], List[Tuple[Tn, float]]],
+    hash_func: Optional[Callable[[Tn], Any]] = None,
+    approx_func: Optional[Callable[[Tn], float]] = None,
+    done_func: Optional[Callable[[Tn], bool]] = None,
+):
     """Performs a shortest-path in a graph and returns the distance to all nodes visited.
     neighbors is a function that takes a state and return a list of tuples containing
     neighboring nodes and the distance.
@@ -231,105 +339,9 @@ def dijkstra2(start, neighbors, hash_func=None, approx_func=None, done_func=None
     return None if done_func else dist
 
 
-def topological_sort(graph):
-    """Performs a topological sort on a graph. Each node in the graph contains
-    the dependencies that will be included before the node in the output.
-    graph: {node: [neighbors]}
-    """
-
-    q = []  # nodes that can be processed; min-heap so they get in lowest-order
-    degree = {}  # node -> outdegree
-    reverse = reverse_graph(graph)
-
-    seen = set()
-    for node, neighbors in graph.items():
-        degree[node] = len(neighbors)
-        seen.add(node)
-        if degree[node] == 0:
-            heapq.heappush(q, node)
-        for x in neighbors:
-            seen.add(x)
-
-    # In case some nodes (with no dependencies) where left out in the input graph
-    for node in seen:
-        if node not in degree:
-            degree[node] = 0
-            heapq.heappush(q, node)
-
-    result = []
-    while len(result) < len(seen):
-        if not len(q):
-            raise Exception("Circular graph")
-        current = heapq.heappop(q)
-        result.append(current)
-        if current in reverse:
-            for x in reverse[current]:
-                degree[x] -= 1
-                assert degree[x] >= 0
-                if degree[x] == 0:
-                    heapq.heappush(q, x)
-
-    return result
-
-
-def max_flow(graph: Dict[Tn, List[Tuple[Tn, int]]], source: Tn, sink: Tn):
-    """
-    Determines the maximum flow between source and sink in a directed graph
-    graph: {node: [(neighbor, capacity)]}
-    """
-
-    # Create a new graph with all edges since we need backedges
-    edges: Dict[Tn, List[Tn]] = defaultdict(list)
-    capacity: Dict[Tuple[Tn, Tn], int] = defaultdict(int)  # (v1,v2) -> number
-    flow: Dict[Tuple[Tn, Tn], int] = defaultdict(int)  # (v1,v2) -> number
-
-    max_edge_capacity = 0
-    for node, neighbors in graph.items():
-        for v, cap in neighbors:
-            if node != sink:
-                edges[node].append(v)
-            if node != source:
-                edges[v].append(node)
-            capacity[(node, v)] += cap
-            max_edge_capacity = max(max_edge_capacity, cap)
-
-    visited: Set[Tn] = set()
-
-    def go(cur: Tn, current_flow: int) -> int:
-        nonlocal visited, flow, capacity, sink
-        if cur == sink:
-            return current_flow
-
-        if cur in visited or current_flow == 0:
-            return 0
-        # print(f"at {cur}, cur flow {current_flow}")
-
-        visited.add(cur)
-        for v in edges[cur]:
-            f = go(
-                v,
-                min(current_flow, capacity[(cur, v)] - flow[(cur, v)] + flow[(v, cur)]),
-            )
-            if f > 0:
-                flow[(cur, v)] += f
-                # print(f"flow {cur}->{v} += {f}")
-                return f
-        return 0
-
-    total_flow = 0
-    added_flow = go(source, max_edge_capacity)
-    while added_flow:
-        # print(f"Added flow {added_flow}")
-        total_flow += added_flow
-        visited = set()
-        added_flow = go(source, max_edge_capacity)
-
-    return total_flow
-
-
 def longest_path(
-    graph: Dict[Tn, List[Tuple[Tn, int]]], start: Tn, goal: Tn
-) -> Tuple[int, List[Tn]]:
+    graph: nx.Graph | nx.DiGraph, start: Tn, goal: Tn
+) -> Tuple[float, List[Tn]]:
     """
     Finds the longest path in a graph from start to goal without visiting the same
     node twice. Returns an empty path if no path from start to goal is found.
@@ -354,8 +366,8 @@ def longest_path(
 
         visited.add(cur)
         path.append(cur)
-        for neighbor, d in graph[cur]:
-            go(neighbor, distance + d)
+        for neighbor, datadict in graph[cur].items():
+            go(neighbor, distance + datadict.get("weight", 1))
         visited.remove(cur)
         path.pop()
 
@@ -364,46 +376,34 @@ def longest_path(
     return (best, longest_path)
 
 
-def compress_paths(
-    graph: Dict[Tn, List[Tuple[Tn, int]]], fixed_nodes: Optional[List[Tn]] = None
-):
+def compress_paths(graph: nx.Graph|nx.DiGraph, fixed_nodes: Optional[List] = None):
     """
     Removes all nodes in graph with two (bi-directional) edges by connecting
-    them directly and setting the distance to the sum of the ege distances.
+    them directly and setting the distance to the sum of the edge distances.
 
     Note that this may not work as expected on a pure directional graph.
     """
 
-    def _find(edges: List[Tuple[Tn, int]], search: Tn):
-        for i, (v, _) in enumerate(edges):
-            if v == search:
-                return i
-        return -1
-
     fixed = set(fixed_nodes or [])
 
-    all_nodes = list(graph.keys())
+    all_nodes = list(graph.nodes)
     for node in all_nodes:
         if node in fixed or len(graph[node]) != 2:
             continue
 
-        a, wa = graph[node][0]
-        b, wb = graph[node][1]
-        ixa = _find(graph[a], node)
-        ixb = _find(graph[b], node)
-
-        if ixa >= 0 and ixb >= 0:
-            assert graph[a][ixa][1] == wa
-            assert graph[b][ixb][1] == wb
-            graph[a][ixa] = b, wa + wb
-            graph[b][ixb] = a, wa + wb
-            del graph[node]
+        (a, b) = graph[node]
+        if node in graph[a] and node in graph[b]:
+            graph.add_edge(a, b, weight=graph[a][node]["weight"] + graph[node][b]["weight"])
+            if graph.is_directed():
+                graph.add_edge(b, a, weight=graph[b][node]["weight"] + graph[node][a]["weight"])
+            graph.remove_node(node)
 
 
 def grid_graph(
     grid: Union[Grid, List[str]],
     is_node: Callable[[Point, str], bool] | str | None = None,
     get_edge: Optional[Callable[[Point, str, Point, str], bool | int]] = None,
+    graph=nx.Graph,
     uni_distance=True,
     num_directions=4,
 ):
@@ -415,7 +415,7 @@ def grid_graph(
     get_edge is a funcion determining if there should be an edge between two node.
     Returns True (or distance) between the nodes.
 
-    If uni_distance is true, no distances will be added, only the edge.
+    If uni_distance is true, no weights data will be added
 
     num_directions should either be 4 (not diagonals) or 8 (with diagonals)."""
 
@@ -434,7 +434,7 @@ def grid_graph(
     if isinstance(grid, Grid):
         grid = grid.to_list()
 
-    graph = {}
+    G = graph()
     ysize = len(grid)
     xsize = len(grid[0])
 
@@ -443,65 +443,22 @@ def grid_graph(
             p = Point(x, y)
             c = grid[y][x]
             if is_node(p, c):
-                neighbors = []
                 for d in directions:
                     np = p + d
+                    if graph == nx.Graph and np < p:
+                        continue
                     if np.x >= 0 and np.x < xsize and np.y >= 0 and np.y < ysize:
                         nc = grid[np.y][np.x]
                         if is_node(np, nc):
                             e = get_edge(p, c, np, nc) if get_edge else True
                             if e is not None and e is not False:
                                 if uni_distance:
-                                    neighbors.append(np)
+                                    G.add_edge(p, np)
                                 else:
-                                    neighbors.append((np, e))
-                graph[p] = neighbors
+                                    G.add_edge(p, np, weight=e)
 
-    return graph
+    return G
 
 
 if __name__ == "__main__":
-    g = {
-        0: [(1, 3), (2, 8)],
-        1: [(2, 4), (3, 6)],
-        2: [(4, 7)],
-        3: [(5, 5)],
-        4: [(1, 5), (3, 2), (5, 8)],
-        6: [(7, 3)],
-    }
-
-    h = {0: [1, 2, 8], 1: [2, 3], 2: [4], 3: [5], 4: [1, 3, 5], 6: [7]}
-
-    # h = symmetric_graph(h)
-    # a = dfs_all(h)
-
-    # h = symmetric_graph(h)
-    # print(bfs_all(h, lambda i, x, steps: print(i,x,steps)))
-
-    topg = {
-        0: [5],
-        1: [5, 2, 2],
-        2: [5],
-        3: [5],
-        4: [],
-        5: [4],
-    }
-
-    # print(topological_sort(topg))
-
-    grid = ["......#...", "..##..###.", "...#...#..", "#...#....."]
-
-    # g = grid_graph(grid, is_node=lambda p, c: c == '#', get_edge=lambda p1, c1, p2, c2: 1, uni_distance=False)
-    # for n, neighbors in g.items():
-    #     print(n, neighbors)
-
-    graph = {
-        0: [(1, 5), (2, 10), (4, 4)],
-        1: [(3, 1), (6, 3)],
-        2: [(3, 7), (4, 3), (5, 7)],
-        3: [(6, 5)],
-        4: [(5, 6)],
-        5: [(6, 4)],
-    }
-
-    print("max flow", max_flow(graph, 0, 6))
+    g = nx.fast_gnp_random_graph(25, 0.05, 0, False)
